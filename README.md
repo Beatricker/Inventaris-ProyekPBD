@@ -28,28 +28,3 @@ Buka browser dan akses: **`http://127.0.0.1:8000`**
 3. **Kasir**: `kasir_satu` / `kasir123` (Hak akses read-only: Katalog Barang, Info Margin)
 
 ---
-
-### Struktur Folder Proyek
-
-```text
-PutPutMart/
-├── config/
-│   ├── database.php       # Koneksi PDO ke MySQL 'proyek_pbd' & auto BASE_URL
-│   └── auth.php           # Helper cek login, cek role, dan flash message
-├── includes/
-│   ├── header.php         # Head, Bootstrap 5 CSS, topbar profil
-│   ├── sidebar.php        # Menu samping dinamis per Role
-│   └── footer.php         # Footer & Bootstrap 5 JS
-├── auth/
-│   ├── login.php          # Form login dengan tombol autofill akun uji coba
-│   └── logout.php         # Logout & hapus session
-├── index.php              # Gerbang utama (redirect otomatis)
-├── dashboard.php          # Dashboard ringkasan master data
-├── satuan/                # CRUD Master Satuan (v_satuan)
-├── barang/                # CRUD Master Barang (v_barang)
-├── vendor/                # CRUD Master Vendor (v_vendor)
-├── user/                  # CRUD Master User (v_user, SHA2-256)
-├── role/                  # CRUD Master Role (v_role)
-├── margin/                # CRUD Master Margin Penjualan (v_margin)
-└── _laravel_backup/       # Arsip proyek Laravel sebelumnya
-```
