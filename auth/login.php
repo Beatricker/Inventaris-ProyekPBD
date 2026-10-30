@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             padding: 24px;
             background-color: var(--color-paper);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 85% 15%, rgba(186, 230, 253, 0.6) 0%, transparent 45%),
                 radial-gradient(circle at 15% 85%, rgba(186, 230, 253, 0.45) 0%, transparent 40%);
         }
@@ -167,21 +167,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="bi bi-box-arrow-in-right"></i> Masuk ke Sistem
                 </button>
             </form>
-
-            <div class="pt-3 border-top text-center" style="border-color: var(--color-rule) !important;">
-                <div class="text-muted small mb-2 fw-semibold">Pilih Akun Cepat (Demo):</div>
-                <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <button type="button" class="demo-chip" onclick="setLogin('admin_pusat', 'admin123')">
-                        <i class="bi bi-shield-check text-danger"></i> Admin
-                    </button>
-                    <button type="button" class="demo-chip" onclick="setLogin('gudang_utama', 'gudang123')">
-                        <i class="bi bi-box-seam text-warning"></i> Gudang
-                    </button>
-                    <button type="button" class="demo-chip" onclick="setLogin('kasir_satu', 'kasir123')">
-                        <i class="bi bi-cart-check text-success"></i> Kasir
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 

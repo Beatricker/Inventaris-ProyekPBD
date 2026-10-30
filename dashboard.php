@@ -27,21 +27,19 @@ $recentMargin = $pdo->query("SELECT * FROM v_margin ORDER BY idmargin_penjualan 
 $recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT 5")->fetchAll();
 ?>
 
-<!-- 1. Editorial Header -->
+<!-- 1. Page Header -->
 <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
     <div>
-        <div class="d-inline-flex align-items-center gap-2 mb-2">
-        </div>
-        <h1 class="display-font mb-1" style="font-size: 2.35rem; font-weight: 500;">
+        <h1 class="display-font mb-1" style="font-size: 2.1rem; font-weight: 500;">
             <?php if ($userRole === 'admin'): ?>
-                Katalog & Manajemen Sistem
+                Dashboard Manajemen Sistem
             <?php elseif ($userRole === 'gudang'): ?>
-                Logistik & Manajemen Inventaris
+                Dashboard Inventaris &amp; Gudang
             <?php else: ?>
-                Katalog Produk & Penjualan
+                Dashboard Katalog Kasir
             <?php endif; ?>
         </h1>
-        <p class="text-muted mb-0" style="font-size: 1.05rem; max-width: 620px;">
+        <p class="text-muted mb-0" style="font-size: 0.98rem; max-width: 620px;">
             <?php if ($userRole === 'admin'): ?>
             <?php elseif ($userRole === 'gudang'): ?>
             <?php else: ?>
