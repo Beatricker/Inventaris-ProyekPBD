@@ -1,14 +1,18 @@
 <?php
+
 /**
  * dashboard.php
- * Halaman Dashboard Utama PutPutMart berbasis Role (Native PHP).
+ * Halaman Dashboard Utama PutPutMart berbasis Role (Refract Hallmark Architecture).
  * Proyek: PutPutMart - Praktikum Pemrograman Basis Data
  */
 
 $page_title = 'Dashboard';
 require_once __DIR__ . '/includes/header.php';
 
-// Ambil data statistik dari tabel master menggunakan PDO
+$userRole = strtolower(trim(auth_role()));
+$username = auth_username();
+
+// Ambil data statistik tabel master
 $totalSatuan = $pdo->query("SELECT COUNT(*) AS total FROM satuan")->fetch()->total ?? 0;
 $totalBarang = $pdo->query("SELECT COUNT(*) AS total FROM barang")->fetch()->total ?? 0;
 $totalVendor = $pdo->query("SELECT COUNT(*) AS total FROM vendor")->fetch()->total ?? 0;
@@ -17,419 +21,293 @@ $totalRole   = $pdo->query("SELECT COUNT(*) AS total FROM role")->fetch()->total
 $totalMargin = $pdo->query("SELECT COUNT(*) AS total FROM margin_penjualan")->fetch()->total ?? 0;
 
 // Ambil data terbaru melalui Database VIEW
-$recentBarang = $pdo->query("SELECT * FROM v_barang ORDER BY idbarang DESC LIMIT 5")->fetchAll();
+$recentBarang = $pdo->query("SELECT * FROM v_barang ORDER BY idbarang DESC LIMIT 6")->fetchAll();
 $recentUser   = $pdo->query("SELECT * FROM v_user ORDER BY iduser DESC LIMIT 5")->fetchAll();
+$recentMargin = $pdo->query("SELECT * FROM v_margin ORDER BY idmargin_penjualan DESC LIMIT 5")->fetchAll();
+$recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT 5")->fetchAll();
 ?>
 
-<!-- Banner Sambutan & Hak Akses Role -->
-<div class="alert alert-white border shadow-sm d-flex align-items-center justify-content-between mb-4 p-3 bg-white">
-    <div class="d-flex align-items-center gap-3">
-        <div class="p-3 bg-primary-subtle text-primary rounded-circle fs-3">
+<!-- 1. Editorial Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
+    <div>
+        <div class="d-inline-flex align-items-center gap-2 mb-2">
+        </div>
+        <h1 class="display-font mb-1" style="font-size: 2.35rem; font-weight: 500;">
             <?php if ($userRole === 'admin'): ?>
-                <i class="bi bi-shield-check"></i>
-            <?php elseif ($userRole === 'kasir'): ?>
-                <i class="bi bi-cart-check"></i>
+                Katalog & Manajemen Sistem
             <?php elseif ($userRole === 'gudang'): ?>
-                <i class="bi bi-box-seam"></i>
+                Logistik & Manajemen Inventaris
             <?php else: ?>
-                <i class="bi bi-person"></i>
+                Katalog Produk & Penjualan
             <?php endif; ?>
-        </div>
-        <div>
-            <h5 class="fw-bold mb-1">Halo, <?= htmlspecialchars($username) ?>!</h5>
-            <p class="mb-0 text-secondary small">
-                Anda masuk sebagai 
-                <strong>
-                    <?php if ($userRole === 'admin'): ?>
-                        Super Administrator (Hak Akses Penuh ke 6 Master Tabel)
-                    <?php elseif ($userRole === 'kasir'): ?>
-                        Petugas Kasir (Akses Informasi Katalog Produk & Margin)
-                    <?php elseif ($userRole === 'gudang'): ?>
-                        Petugas Gudang (Fokus Pengelolaan Barang, Satuan, dan Vendor)
-                    <?php else: ?>
-                        <?= htmlspecialchars(auth_role()) ?>
-                    <?php endif; ?>
-                </strong>
-            </p>
-        </div>
+        </h1>
+        <p class="text-muted mb-0" style="font-size: 1.05rem; max-width: 620px;">
+            <?php if ($userRole === 'admin'): ?>
+            <?php elseif ($userRole === 'gudang'): ?>
+            <?php else: ?>
+            <?php endif; ?>
+        </p>
+    </div>
+
+    <div class="d-flex gap-2">
+        <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
+            <a href="<?= BASE_URL ?>/barang/tambah.php" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Tambah Barang
+            </a>
+        <?php endif; ?>
+        <?php if ($userRole === 'admin'): ?>
+            <a href="<?= BASE_URL ?>/user/tambah.php" class="btn btn-clear">
+                <i class="bi bi-person-plus"></i> Tambah User
+            </a>
+        <?php endif; ?>
     </div>
 </div>
 
-<!-- ============================================== -->
-<!-- 1. TAMPILAN DASHBOARD UNTUK KASIR -->
-<!-- ============================================== -->
-<?php if ($userRole === 'kasir'): ?>
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="card h-100 border-start border-primary border-4">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">Katalog Barang Aktif</span>
-                        <h2 class="fw-bold my-1 text-primary"><?= $totalBarang ?></h2>
-                        <a href="<?= BASE_URL ?>/barang/index.php" class="small text-primary text-decoration-none">
-                            Lihat Katalog Harga &rarr;
-                        </a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3">
-                        <i class="bi bi-box-seam"></i>
-                    </div>
-                </div>
+<!-- 2. Refract Unified Metric Board -->
+<div class="refract-strip mb-4">
+    <?php if ($userRole === 'admin'): ?>
+        <div class="row g-0">
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Barang Terdaftar</div>
+                <div class="refract-strip__num tabular"><?= $totalBarang ?></div>
+                <a href="<?= BASE_URL ?>/barang/index.php" class="refract-strip__sub">Katalog SKU &rarr;</a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Satuan Ukur</div>
+                <div class="refract-strip__num tabular"><?= $totalSatuan ?></div>
+                <a href="<?= BASE_URL ?>/satuan/index.php" class="refract-strip__sub">Daftar Satuan &rarr;</a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Mitra Vendor</div>
+                <div class="refract-strip__num tabular"><?= $totalVendor ?></div>
+                <a href="<?= BASE_URL ?>/vendor/index.php" class="refract-strip__sub">Pemasok &rarr;</a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Margin Jual</div>
+                <div class="refract-strip__num tabular"><?= $totalMargin ?></div>
+                <a href="<?= BASE_URL ?>/margin/index.php" class="refract-strip__sub">Tier Margin &rarr;</a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Pengguna</div>
+                <div class="refract-strip__num tabular"><?= $totalUser ?></div>
+                <a href="<?= BASE_URL ?>/user/index.php" class="refract-strip__sub">Akun Sistem &rarr;</a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2 refract-strip__cell">
+                <div class="refract-strip__label">Role Akses</div>
+                <div class="refract-strip__num tabular"><?= $totalRole ?></div>
+                <a href="<?= BASE_URL ?>/role/index.php" class="refract-strip__sub">Tingkat Hak &rarr;</a>
             </div>
         </div>
-
-        <div class="col-md-6">
-            <div class="card h-100 border-start border-info border-4">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">Margin Penjualan</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalMargin ?></h2>
-                        <a href="<?= BASE_URL ?>/margin/index.php" class="small text-info text-decoration-none">
-                            Cek Margin Aktif &rarr;
-                        </a>
-                    </div>
-                    <div class="bg-info-subtle text-info p-3 rounded-3 fs-3">
-                        <i class="bi bi-graph-up-arrow"></i>
-                    </div>
-                </div>
+    <?php elseif ($userRole === 'gudang'): ?>
+        <div class="row g-0">
+            <div class="col-md-4 refract-strip__cell">
+                <div class="refract-strip__label">Koleksi Barang</div>
+                <div class="refract-strip__num tabular"><?= $totalBarang ?></div>
+                <a href="<?= BASE_URL ?>/barang/index.php" class="refract-strip__sub">Kelola Inventaris &rarr;</a>
+            </div>
+            <div class="col-md-4 refract-strip__cell">
+                <div class="refract-strip__label">Satuan Tersedia</div>
+                <div class="refract-strip__num tabular"><?= $totalSatuan ?></div>
+                <a href="<?= BASE_URL ?>/satuan/index.php" class="refract-strip__sub">Kelola Satuan &rarr;</a>
+            </div>
+            <div class="col-md-4 refract-strip__cell">
+                <div class="refract-strip__label">Mitra Pemasok</div>
+                <div class="refract-strip__num tabular"><?= $totalVendor ?></div>
+                <a href="<?= BASE_URL ?>/vendor/index.php" class="refract-strip__sub">Kelola Vendor &rarr;</a>
             </div>
         </div>
-    </div>
-
-    <!-- Katalog Barang untuk Kasir -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span class="fw-bold"><i class="bi bi-box-seam me-2"></i> Katalog Harga Barang (dari <code>v_barang</code>)</span>
-            <a href="<?= BASE_URL ?>/barang/index.php" class="btn btn-sm btn-outline-primary">Semua Barang</a>
+    <?php else: ?>
+        <div class="row g-0">
+            <div class="col-md-6 refract-strip__cell">
+                <div class="refract-strip__label">Produk Siap Jual</div>
+                <div class="refract-strip__num tabular"><?= $totalBarang ?></div>
+                <a href="<?= BASE_URL ?>/barang/index.php" class="refract-strip__sub">Buka Katalog &rarr;</a>
+            </div>
+            <div class="col-md-6 refract-strip__cell">
+                <div class="refract-strip__label">Margin Keuntungan Aktif</div>
+                <div class="refract-strip__num tabular"><?= $totalMargin ?></div>
+                <a href="<?= BASE_URL ?>/margin/index.php" class="refract-strip__sub">Lihat Rincian &rarr;</a>
+            </div>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-3">Nama Barang</th>
-                            <th>Jenis</th>
-                            <th>Satuan</th>
-                            <th>Harga Jual</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($recentBarang)): ?>
+    <?php endif; ?>
+</div>
+
+<!-- 3. Main Workspace: Katalog Barang & Panel Referensi -->
+<div class="row g-4">
+    <!-- Kolom Utama: Katalog Barang -->
+    <div class="<?= ($userRole === 'kasir') ? 'col-12' : 'col-lg-8' ?>">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-box-seam me-2" style="color: var(--color-accent);"></i>Katalog Barang Terkini
+                    </h5>
+                </div>
+                <a href="<?= BASE_URL ?>/barang/index.php" class="btn btn-clear btn-sm">
+                    Lihat Semua (<?= $totalBarang ?>) &rarr;
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
                             <tr>
-                                <td colspan="5" class="text-center py-3 text-muted">Belum ada data barang.</td>
+                                <th class="ps-4">Nama Produk</th>
+                                <th>Kategori</th>
+                                <th>Satuan</th>
+                                <th>Harga Pokok</th>
+                                <th>Harga Jual</th>
+                                <th class="text-center">Sisa Stok</th>
+                                <th class="pe-4">Status</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($recentBarang as $b): ?>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($recentBarang)): ?>
                                 <tr>
-                                    <td class="ps-3 fw-semibold"><?= htmlspecialchars($b->nama_barang) ?></td>
-                                    <td>
-                                        <span class="badge <?= $b->jenis == 'B' ? 'bg-primary' : 'bg-warning text-dark' ?>">
-                                            <?= htmlspecialchars($b->jenis) ?>
-                                        </span>
-                                    </td>
-                                    <td><?= htmlspecialchars($b->nama_satuan) ?></td>
-                                    <td>Rp <?= number_format($b->harga, 0, ',', '.') ?></td>
-                                    <td>
-                                        <span class="badge <?= $b->status == 1 ? 'bg-success' : 'bg-secondary' ?>">
-                                            <?= $b->status == 1 ? 'Aktif' : 'Non-Aktif' ?>
-                                        </span>
-                                    </td>
+                                    <td colspan="7" class="text-center py-5 text-muted">Belum ada barang terdaftar.</td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-<!-- ============================================== -->
-<!-- 2. TAMPILAN DASHBOARD UNTUK GUDANG -->
-<!-- ============================================== -->
-<?php elseif ($userRole === 'gudang'): ?>
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card h-100 border-start border-primary border-4">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">1. Master Satuan</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalSatuan ?></h2>
-                        <a href="<?= BASE_URL ?>/satuan/index.php" class="small text-primary text-decoration-none">
-                            Kelola Satuan &rarr;
-                        </a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3">
-                        <i class="bi bi-rulers"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card h-100 border-start border-success border-4">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">2. Master Barang</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalBarang ?></h2>
-                        <a href="<?= BASE_URL ?>/barang/index.php" class="small text-success text-decoration-none">
-                            Kelola Barang &rarr;
-                        </a>
-                    </div>
-                    <div class="bg-success-subtle text-success p-3 rounded-3 fs-3">
-                        <i class="bi bi-box-seam"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card h-100 border-start border-info border-4">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">3. Master Vendor</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalVendor ?></h2>
-                        <a href="<?= BASE_URL ?>/vendor/index.php" class="small text-info text-decoration-none">
-                            Kelola Vendor &rarr;
-                        </a>
-                    </div>
-                    <div class="bg-info-subtle text-info p-3 rounded-3 fs-3">
-                        <i class="bi bi-truck"></i>
-                    </div>
+                            <?php else: ?>
+                                <?php foreach ($recentBarang as $b): ?>
+                                    <tr>
+                                        <td class="ps-4 fw-semibold text-dark">
+                                            <?= htmlspecialchars($b->nama_barang) ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?= $b->jenis == 'B' ? 'badge-refract-blue' : 'badge-refract-yellow' ?>">
+                                                <?= $b->jenis == 'B' ? 'Barang Jadi' : 'Konsumsi' ?>
+                                            </span>
+                                        </td>
+                                        <td><?= htmlspecialchars($b->nama_satuan) ?></td>
+                                        <td class="tabular text-muted">
+                                            Rp <?= number_format($b->harga, 0, ',', '.') ?>
+                                        </td>
+                                        <td class="tabular fw-medium" style="color: var(--color-accent);">
+                                            Rp <?= number_format($b->harga_jual ?? $b->harga, 0, ',', '.') ?>
+                                        </td>
+                                        <td class="text-center tabular">
+                                            <span class="badge <?= ($b->stok ?? 0) > 0 ? 'badge-refract-blue' : 'badge-refract-gray' ?>">
+                                                <?= number_format($b->stok ?? 0, 0, ',', '.') ?>
+                                            </span>
+                                        </td>
+                                        <td class="pe-4">
+                                            <span class="badge <?= $b->status == 1 ? 'badge-refract-green' : 'badge-refract-gray' ?>">
+                                                <?= $b->status == 1 ? 'Aktif' : 'Non-Aktif' ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabel Barang dari v_barang -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span class="fw-bold"><i class="bi bi-box-seam me-2"></i> Daftar Barang Terbaru (dari <code>v_barang</code>)</span>
-            <a href="<?= BASE_URL ?>/barang/index.php" class="btn btn-sm btn-outline-primary">Semua Barang</a>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-3">Nama Barang</th>
-                            <th>Jenis</th>
-                            <th>Satuan</th>
-                            <th>Harga Jual</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($recentBarang)): ?>
-                            <tr>
-                                <td colspan="5" class="text-center py-3 text-muted">Belum ada data barang.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($recentBarang as $b): ?>
-                                <tr>
-                                    <td class="ps-3 fw-semibold"><?= htmlspecialchars($b->nama_barang) ?></td>
-                                    <td>
-                                        <span class="badge <?= $b->jenis == 'B' ? 'bg-primary' : 'bg-warning text-dark' ?>">
-                                            <?= htmlspecialchars($b->jenis) ?>
-                                        </span>
-                                    </td>
-                                    <td><?= htmlspecialchars($b->nama_satuan) ?></td>
-                                    <td>Rp <?= number_format($b->harga, 0, ',', '.') ?></td>
-                                    <td>
-                                        <span class="badge <?= $b->status == 1 ? 'bg-success' : 'bg-secondary' ?>">
-                                            <?= $b->status == 1 ? 'Aktif' : 'Non-Aktif' ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-<!-- ============================================== -->
-<!-- 3. TAMPILAN DASHBOARD UNTUK SUPER ADMIN -->
-<!-- ============================================== -->
-<?php else: ?>
-    <div class="row g-3 mb-4">
-        <!-- 1. Satuan -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">1. Master Satuan</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalSatuan ?></h2>
-                        <a href="<?= BASE_URL ?>/satuan/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-rulers"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Barang -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">2. Master Barang</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalBarang ?></h2>
-                        <a href="<?= BASE_URL ?>/barang/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-box-seam"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Vendor -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">3. Master Vendor</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalVendor ?></h2>
-                        <a href="<?= BASE_URL ?>/vendor/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-truck"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. User -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">4. Master User</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalUser ?></h2>
-                        <a href="<?= BASE_URL ?>/user/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-people"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. Role -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">5. Master Role</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalRole ?></h2>
-                        <a href="<?= BASE_URL ?>/role/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-shield-lock"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. Margin Penjualan -->
-        <div class="col-sm-6 col-xl-4">
-            <div class="card h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-secondary small fw-semibold text-uppercase">6. Margin Penjualan</span>
-                        <h2 class="fw-bold my-1 text-dark"><?= $totalMargin ?></h2>
-                        <a href="<?= BASE_URL ?>/margin/index.php" class="small text-primary text-decoration-none">Kelola &rarr;</a>
-                    </div>
-                    <div class="bg-primary-subtle text-primary p-3 rounded-3 fs-3"><i class="bi bi-graph-up-arrow"></i></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Ringkasan Master Data untuk Super Admin -->
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card">
+    <!-- Kolom Samping: Panel Referensi Operasional -->
+    <?php if ($userRole === 'admin'): ?>
+        <div class="col-lg-4">
+            <!-- Panel Pengguna Sistem -->
+            <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-box-seam me-2"></i> Daftar Barang Terbaru (dari <code>v_barang</code>)</span>
-                    <a href="<?= BASE_URL ?>/barang/index.php" class="btn btn-sm btn-outline-primary">Kelola Barang</a>
+                    <span class="fw-bold"><i class="bi bi-people me-2" style="color: var(--color-accent);"></i>Pengguna Sistem</span>
+                    <a href="<?= BASE_URL ?>/user/index.php" class="btn btn-clear btn-sm">Semua</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
-                                    <th class="ps-3">Nama Barang</th>
-                                    <th>Jenis</th>
-                                    <th>Satuan</th>
-                                    <th>Harga</th>
-                                    <th>Status</th>
+                                    <th class="ps-4">User</th>
+                                    <th class="pe-4 text-end">Role</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($recentBarang)): ?>
+                                <?php foreach ($recentUser as $u): ?>
                                     <tr>
-                                        <td colspan="5" class="text-center py-3 text-muted">Belum ada data barang.</td>
+                                        <td class="ps-4 fw-semibold">
+                                            <i class="bi bi-person-circle text-muted me-1"></i> <?= htmlspecialchars($u->username) ?>
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            <span class="badge badge-refract-blue">
+                                                <?= htmlspecialchars($u->nama_role) ?>
+                                            </span>
+                                        </td>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recentBarang as $b): ?>
-                                        <tr>
-                                            <td class="ps-3 fw-semibold"><?= htmlspecialchars($b->nama_barang) ?></td>
-                                            <td>
-                                                <span class="badge <?= $b->jenis == 'B' ? 'bg-primary' : 'bg-warning text-dark' ?>">
-                                                    <?= htmlspecialchars($b->jenis) ?>
-                                                </span>
-                                            </td>
-                                            <td><?= htmlspecialchars($b->nama_satuan) ?></td>
-                                            <td>Rp <?= number_format($b->harga, 0, ',', '.') ?></td>
-                                            <td>
-                                                <span class="badge <?= $b->status == 1 ? 'bg-success' : 'bg-secondary' ?>">
-                                                    <?= $b->status == 1 ? 'Aktif' : 'Non-Aktif' ?>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Margin Penjualan -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-graph-up-arrow me-2" style="color: var(--color-accent);"></i>Tier Margin</span>
+                    <a href="<?= BASE_URL ?>/margin/index.php" class="btn btn-clear btn-sm">Semua</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-4">Persentase</th>
+                                    <th class="pe-4 text-end">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recentMargin as $m): ?>
+                                    <tr>
+                                        <td class="ps-4 tabular fw-semibold" style="color: var(--color-accent);">
+                                            <?= htmlspecialchars($m->persen) ?>%
+                                        </td>
+                                        <td class="pe-4 text-end">
+                                            <span class="badge <?= $m->status == 1 ? 'badge-refract-green' : 'badge-refract-red' ?>">
+                                                <?= $m->status == 1 ? 'Aktif' : 'Non-Aktif' ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-lg-5">
+    <?php elseif ($userRole === 'gudang'): ?>
+        <div class="col-lg-4">
+            <!-- Panel Mitra Vendor untuk Gudang -->
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-people me-2"></i> Pengguna Sistem (dari <code>v_user</code>)</span>
-                    <a href="<?= BASE_URL ?>/user/index.php" class="btn btn-sm btn-outline-primary">Kelola User</a>
+                    <span class="fw-bold"><i class="bi bi-truck me-2" style="color: var(--color-accent);"></i>Mitra Vendor</span>
+                    <a href="<?= BASE_URL ?>/vendor/index.php" class="btn btn-clear btn-sm">Semua</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
-                                    <th class="ps-3">Username</th>
-                                    <th>Role</th>
+                                    <th class="ps-4">Nama Vendor</th>
+                                    <th class="pe-4 text-end">Badan</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($recentUser)): ?>
+                                <?php foreach ($recentVendor as $v): ?>
                                     <tr>
-                                        <td colspan="2" class="text-center py-3 text-muted">Belum ada user.</td>
+                                        <td class="ps-4 fw-semibold"><?= htmlspecialchars($v->nama_vendor) ?></td>
+                                        <td class="pe-4 text-end">
+                                            <span class="badge badge-refract-blue"><?= htmlspecialchars($v->badan_hukum) ?></span>
+                                        </td>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recentUser as $u): ?>
-                                        <tr>
-                                            <td class="ps-3 fw-semibold">
-                                                <i class="bi bi-person-circle text-muted me-1"></i> <?= htmlspecialchars($u->username) ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary-subtle text-secondary border">
-                                                    <?= htmlspecialchars($u->nama_role) ?>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-<?php endif; ?>
+    <?php endif; ?>
+</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

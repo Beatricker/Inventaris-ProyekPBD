@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span class="fw-bold"><i class="bi bi-shield-plus me-2"></i>Form Input Master Role</span>
+                <span class="fw-bold"><i class="bi bi-shield-plus me-2"></i>Tambah Role Baru</span>
                 <a href="<?= BASE_URL ?>/role/index.php" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Kembali
                 </a>

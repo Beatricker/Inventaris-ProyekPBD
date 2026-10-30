@@ -1,10 +1,14 @@
 <?php
+
 /**
  * includes/sidebar.php
  * Sidebar navigasi sistem PutPutMart berbasis Role.
  * Proyek: PutPutMart - Praktikum Pemrograman Basis Data
  */
 
+require_once __DIR__ . '/../config/auth.php';
+
+$userRole = strtolower(trim(auth_role()));
 $currentScript = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
 $isDashboard = (strpos($currentScript, 'dashboard.php') !== false);
 $isSatuan    = (strpos($currentScript, '/satuan/') !== false);
@@ -16,7 +20,9 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
 ?>
 <aside class="sidebar">
     <div class="brand">
-        <i class="bi bi-shop text-primary fs-4"></i>
+        <div class="brand-icon">
+            <i class="bi bi-shop"></i>
+        </div>
         <span>PutPutMart</span>
     </div>
 
@@ -25,17 +31,17 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
 
-        <!-- Menu Master Logistik / Inventaris: Gudang & Admin -->
+        <!-- Menu Logistik & Barang: Gudang & Admin -->
         <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
             <div class="nav-header">Logistik & Barang</div>
             <a class="nav-link <?= $isSatuan ? 'active' : '' ?>" href="<?= BASE_URL ?>/satuan/index.php">
-                <i class="bi bi-rulers"></i> 1. Master Satuan
+                <i class="bi bi-rulers"></i> Satuan
             </a>
             <a class="nav-link <?= $isBarang ? 'active' : '' ?>" href="<?= BASE_URL ?>/barang/index.php">
-                <i class="bi bi-box-seam"></i> 2. Master Barang
+                <i class="bi bi-box-seam"></i> Barang
             </a>
             <a class="nav-link <?= $isVendor ? 'active' : '' ?>" href="<?= BASE_URL ?>/vendor/index.php">
-                <i class="bi bi-truck"></i> 3. Master Vendor
+                <i class="bi bi-truck"></i> Vendor
             </a>
         <?php elseif ($userRole === 'kasir'): ?>
             <!-- Kasir hanya diizinkan melihat katalog barang -->
@@ -49,13 +55,13 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
         <?php if ($userRole === 'admin'): ?>
             <div class="nav-header">Pengaturan Super Admin</div>
             <a class="nav-link <?= $isUser ? 'active' : '' ?>" href="<?= BASE_URL ?>/user/index.php">
-                <i class="bi bi-people"></i> 4. Master User
+                <i class="bi bi-people"></i> User
             </a>
             <a class="nav-link <?= $isRole ? 'active' : '' ?>" href="<?= BASE_URL ?>/role/index.php">
-                <i class="bi bi-shield-lock"></i> 5. Master Role
+                <i class="bi bi-shield-lock"></i> Role
             </a>
             <a class="nav-link <?= $isMargin ? 'active' : '' ?>" href="<?= BASE_URL ?>/margin/index.php">
-                <i class="bi bi-graph-up-arrow"></i> 6. Margin Penjualan
+                <i class="bi bi-graph-up-arrow"></i> Margin Penjualan
             </a>
         <?php elseif ($userRole === 'kasir'): ?>
             <!-- Kasir bisa melihat info margin aktif -->

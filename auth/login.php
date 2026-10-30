@@ -1,4 +1,5 @@
 <?php
+
 /**
  * auth/login.php
  * Halaman login dan proses autentikasi menggunakan PDO & SHA2(password, 256).
@@ -15,7 +16,6 @@ if (isset($_SESSION['user'])) {
 }
 
 $error = get_flash('error');
-$success = get_flash('success');
 $oldUsername = '';
 
 // Proses form login saat tombol submit ditekan
@@ -46,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $user->nama_role;
             $_SESSION['idrole'] = $user->idrole;
 
-            set_flash('success', "Selamat datang, {$user->username} ({$user->nama_role})!");
             header('Location: ' . BASE_URL . '/dashboard.php');
             exit;
         } else {
@@ -57,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -65,111 +65,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Hallmark Refract Theme -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/refract.css">
     <style>
         body {
-            background-color: #0f172a;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            padding: 20px;
+            padding: 24px;
+            background-color: var(--color-paper);
+            background-image: 
+                radial-gradient(circle at 85% 15%, rgba(186, 230, 253, 0.6) 0%, transparent 45%),
+                radial-gradient(circle at 15% 85%, rgba(186, 230, 253, 0.45) 0%, transparent 40%);
         }
+
         .login-card {
-            max-width: 420px;
+            max-width: 440px;
             width: 100%;
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--color-rule);
+            border-radius: 24px;
+            box-shadow: 0 24px 50px -20px rgba(0, 109, 168, 0.18), 0 4px 12px -2px rgba(12, 26, 44, 0.05);
             overflow: hidden;
         }
+
         .login-header {
-            background: #1e293b;
-            color: #ffffff;
-            padding: 28px 24px;
+            padding: 36px 32px 24px;
             text-align: center;
-            border-bottom: 3px solid #3b82f6;
+            background: transparent;
         }
+
         .login-body {
-            padding: 28px 24px;
+            padding: 0 32px 36px;
         }
-        .form-control {
-            border-radius: 8px;
-            padding: 10px 14px;
-        }
-        .demo-account-badge {
+
+        .demo-chip {
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            background: #f8fafc;
+            border: 1px solid var(--color-rule);
+            font-size: 0.775rem;
+            color: var(--color-muted);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        .demo-account-badge:hover {
-            opacity: 0.85;
-            transform: scale(0.98);
+
+        .demo-chip:hover {
+            background: var(--color-accent-soft);
+            color: var(--color-accent);
+            border-color: rgba(0, 109, 168, 0.3);
+            transform: translateY(-1px);
         }
     </style>
 </head>
+
 <body>
 
     <div class="login-card">
         <div class="login-header">
-            <div class="d-inline-flex p-3 bg-primary bg-opacity-25 text-primary rounded-circle mb-2">
-                <i class="bi bi-shop fs-2"></i>
+            <div class="d-inline-flex align-items-center justify-content-center mb-3">
+                <span class="wordmark__ring" style="width: 28px; height: 28px; border-width: 5px;"></span>
             </div>
-            <h4 class="fw-bold mb-1">PutPutMart</h4>
-            <p class="mb-0 text-white-50 small">Login Sistem Inventaris & Master Data (Native PHP)</p>
+            <h3 class="fw-bold mb-1" style="font-size: 1.75rem;">PutPutMart</h3>
+            <p class="mb-0 text-muted" style="font-size: 0.92rem;">Sistem Informasi Kasir & Inventaris</p>
         </div>
 
         <div class="login-body">
             <?php if ($error): ?>
-                <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 small" role="alert">
+                <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4" role="alert">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <div><?= htmlspecialchars($error) ?></div>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
 
-            <?php if ($success): ?>
-                <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 small" role="alert">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <div><?= htmlspecialchars($success) ?></div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
-
             <form action="" method="POST">
                 <div class="mb-3">
-                    <label for="username" class="form-label fw-semibold small text-secondary">Username</label>
+                    <label for="username" class="form-label">Username</label>
                     <div class="input-group">
-                        <span class="input-group-text bg-light text-muted"><i class="bi bi-person"></i></span>
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
                         <input type="text" name="username" id="username" class="form-control" value="<?= htmlspecialchars($oldUsername) ?>" placeholder="Masukkan username" required autofocus>
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <label for="password" class="form-label fw-semibold small text-secondary">Password</label>
+                    <label for="password" class="form-label">Password</label>
                     <div class="input-group">
-                        <span class="input-group-text bg-light text-muted"><i class="bi bi-key"></i></span>
+                        <span class="input-group-text"><i class="bi bi-key"></i></span>
                         <input type="password" name="password" id="password" class="form-control" placeholder="Masukkan password" required>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm mb-3">
-                    <i class="bi bi-box-arrow-in-right me-1"></i> Masuk
+                <button type="submit" class="btn btn-primary w-100 py-2 mb-3 fw-semibold">
+                    <i class="bi bi-box-arrow-in-right"></i> Masuk ke Sistem
                 </button>
             </form>
 
-            <!-- Akun Pengujian Cepat -->
-            <div class="p-3 bg-light rounded-3 border small">
-                <div class="fw-bold text-secondary mb-2"><i class="bi bi-info-circle"></i> Akun Pengujian (Klik untuk isi cepat):</div>
-                <div class="d-flex flex-column gap-1">
-                    <span class="badge bg-primary text-start demo-account-badge py-2 px-3" onclick="setLogin('admin_pusat', 'admin123')">
-                        <i class="bi bi-shield-lock me-1"></i> Admin: admin_pusat / admin123
-                    </span>
-                    <span class="badge bg-success text-start demo-account-badge py-2 px-3" onclick="setLogin('kasir_satu', 'kasir123')">
-                        <i class="bi bi-cart me-1"></i> Kasir: kasir_satu / kasir123
-                    </span>
-                    <span class="badge bg-secondary text-start demo-account-badge py-2 px-3" onclick="setLogin('gudang_utama', 'gudang123')">
-                        <i class="bi bi-box me-1"></i> Gudang: gudang_utama / gudang123
-                    </span>
+            <div class="pt-3 border-top text-center" style="border-color: var(--color-rule) !important;">
+                <div class="text-muted small mb-2 fw-semibold">Pilih Akun Cepat (Demo):</div>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <button type="button" class="demo-chip" onclick="setLogin('admin_pusat', 'admin123')">
+                        <i class="bi bi-shield-check text-danger"></i> Admin
+                    </button>
+                    <button type="button" class="demo-chip" onclick="setLogin('gudang_utama', 'gudang123')">
+                        <i class="bi bi-box-seam text-warning"></i> Gudang
+                    </button>
+                    <button type="button" class="demo-chip" onclick="setLogin('kasir_satu', 'kasir123')">
+                        <i class="bi bi-cart-check text-success"></i> Kasir
+                    </button>
                 </div>
             </div>
         </div>
@@ -184,4 +194,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
 </body>
+
 </html>

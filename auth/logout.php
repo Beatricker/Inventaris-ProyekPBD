@@ -18,7 +18,5 @@ if (ini_get("session.use_cookies")) {
 }
 session_destroy();
 
-session_start();
-set_flash('success', 'Anda telah berhasil keluar dari sistem.');
 header('Location: ' . BASE_URL . '/auth/login.php');
 exit;
