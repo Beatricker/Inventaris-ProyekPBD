@@ -80,10 +80,12 @@ function db_hitung_harga_jual(PDO $pdo, int $idbarang, ?int $idmargin = null): i
 }
 
 /**
- * Menghitung nilai PPN dari subtotal (11%)
+ * Menghitung nilai PPN dari subtotal via Function resmi fn_hitung_ppn()
  */
-function db_hitung_ppn(int $subtotal, float $persen = 11.0): int {
-    return (int) round($subtotal * ($persen / 100));
+function db_hitung_ppn(PDO $pdo, int $subtotal): int {
+    $stmt = $pdo->prepare("SELECT fn_hitung_ppn(?) AS ppn");
+    $stmt->execute([$subtotal]);
+    return (int) $stmt->fetchColumn();
 }
 
 /**
@@ -257,55 +259,49 @@ function db_sp_transaksi_retur(PDO $pdo, int $idpenerimaan, int $iduser, array $
 }
 
 /**
- * Eksekusi transaksi kasir penjualan
+ * Eksekusi transaksi kasir penjualan via Stored Procedure sp_transaksi_penjualan.
+ * Insert ke detail_penjualan akan otomatis memicu Trigger trg_penjualan_kurang_stok
+ * yang memotong saldo kartu_stok.
  */
 function db_sp_transaksi_penjualan(PDO $pdo, int $iduser, ?int $idmargin, array $items): array {
     if (empty($items)) {
         return ['idpenjualan' => 0, 'status' => 'INVALID', 'pesan' => 'Keranjang belanja tidak boleh kosong.'];
     }
 
-    $pdo->beginTransaction();
     try {
-        $subtotal = 0;
-        foreach ($items as $it) {
-            $subtotal += ((int)$it['jumlah'] * (int)$it['harga_satuan']);
-        }
-        $ppn = (int) round($subtotal * 0.11);
-        $total = $subtotal + $ppn;
+        $first = $items[0];
+        $pdo->query("SET @out_id = 0");
+        $stmt = $pdo->prepare("CALL sp_transaksi_penjualan(?, ?, ?, ?, ?, @out_id)");
+        $stmt->execute([
+            $iduser,
+            $idmargin,
+            (int)$first['idbarang'],
+            (int)$first['jumlah'],
+            (int)$first['harga_satuan']
+        ]);
+        $stmt->closeCursor();
 
-        $stmtPJ = $pdo->prepare("
-            INSERT INTO penjualan (created_at, subtotal_nilai, ppn, total_nilai, iduser, idmargin_penjualan)
-            VALUES (NOW(), ?, ?, ?, ?, ?)
-        ");
-        $stmtPJ->execute([$subtotal, $ppn, $total, $iduser, $idmargin]);
-        $idpenjualan = (int) $pdo->lastInsertId();
+        $idpenjualan = (int) $pdo->query("SELECT @out_id")->fetchColumn();
 
-        $stmtDP = $pdo->prepare("
-            INSERT INTO detail_penjualan (penjualan_idpenjualan, idbarang, jumlah, harga_satuan, subtotal)
-            VALUES (?, ?, ?, ?, ?)
-        ");
-        $stmtKS = $pdo->prepare("
-            INSERT INTO kartu_stok (jenis_transaksi, masuk, keluar, stock, created_at, idtransaksi, idbarang)
-            VALUES ('K', 0, ?, ?, NOW(), ?, ?)
-        ");
-
-        foreach ($items as $it) {
-            $sub = (int)$it['jumlah'] * (int)$it['harga_satuan'];
-            $stmtDP->execute([$idpenjualan, (int)$it['idbarang'], (int)$it['jumlah'], (int)$it['harga_satuan'], $sub]);
-
-            $stokLama = db_get_sisa_stok($pdo, (int)$it['idbarang']);
-            $stokBaru = $stokLama - (int)$it['jumlah'];
-            $stmtKS->execute([(int)$it['jumlah'], $stokBaru, $idpenjualan, (int)$it['idbarang']]);
+        if (count($items) > 1 && $idpenjualan > 0) {
+            $stmtDP = $pdo->prepare("
+                INSERT INTO detail_penjualan (penjualan_idpenjualan, idbarang, jumlah, harga_satuan, subtotal)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            for ($i = 1; $i < count($items); $i++) {
+                $it = $items[$i];
+                $sub = (int)$it['jumlah'] * (int)$it['harga_satuan'];
+                // Insert ini otomatis memicu Trigger trg_penjualan_kurang_stok
+                $stmtDP->execute([$idpenjualan, (int)$it['idbarang'], (int)$it['jumlah'], (int)$it['harga_satuan'], $sub]);
+            }
         }
 
-        $pdo->commit();
         return [
             'idpenjualan' => $idpenjualan,
             'status'      => 'SUCCESS',
             'pesan'       => 'Penjualan berhasil dicatat.',
         ];
     } catch (Exception $e) {
-        $pdo->rollBack();
         return [
             'idpenjualan' => 0,
             'status'      => 'ERROR',
