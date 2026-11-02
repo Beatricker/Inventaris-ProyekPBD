@@ -7,7 +7,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/auth.php';
-check_role(['Admin', 'Gudang']);
+check_role(['Admin']);
 
 // Ambil daftar satuan aktif untuk pilihan dropdown
 $satuanList = $pdo->query("SELECT * FROM v_satuan WHERE status = 1 ORDER BY nama_satuan ASC")->fetchAll();

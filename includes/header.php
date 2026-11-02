@@ -16,6 +16,10 @@ $isVendor    = (strpos($currentScript, '/vendor/') !== false);
 $isUser      = (strpos($currentScript, '/user/') !== false);
 $isRole      = (strpos($currentScript, '/role/') !== false);
 $isMargin    = (strpos($currentScript, '/margin/') !== false);
+$isPenerimaan = (strpos($currentScript, '/penerimaan/') !== false);
+$isRetur     = (strpos($currentScript, '/retur/') !== false);
+$isKartuStok = (strpos($currentScript, '/kartu_stok/') !== false);
+$isPengadaan = (strpos($currentScript, '/pengadaan/') !== false);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -58,14 +62,20 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
                     <i class="bi bi-box-seam"></i>
                     <span class="nav-text">Data Barang</span>
                 </a>
-                <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
+                <?php if ($userRole === 'admin'): ?>
                     <a href="<?= BASE_URL ?>/satuan/index.php" class="sidebar-nav-link <?= $isSatuan ? 'active' : '' ?>">
                         <i class="bi bi-rulers"></i>
                         <span class="nav-text">Satuan Ukur</span>
                     </a>
+                <?php endif; ?>
+                <?php if ($userRole === 'admin'): ?>
                     <a href="<?= BASE_URL ?>/vendor/index.php" class="sidebar-nav-link <?= $isVendor ? 'active' : '' ?>">
                         <i class="bi bi-truck"></i>
                         <span class="nav-text">Mitra Vendor</span>
+                    </a>
+                    <a href="<?= BASE_URL ?>/pengadaan/index.php" class="sidebar-nav-link <?= $isPengadaan ? 'active' : '' ?>">
+                        <i class="bi bi-cart-plus"></i>
+                        <span class="nav-text">Pengadaan Barang</span>
                     </a>
                 <?php endif; ?>
                 <?php if (in_array($userRole, ['admin', 'kasir'])): ?>
@@ -75,7 +85,24 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
                     </a>
                 <?php endif; ?>
 
-                <!-- 3. Administrasi (Khusus Admin) -->
+                <!-- 3. Logistik Gudang (Admin & Gudang) -->
+                <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
+                    <div class="sidebar-group-title">Logistik Gudang</div>
+                    <a href="<?= BASE_URL ?>/penerimaan/index.php" class="sidebar-nav-link <?= $isPenerimaan ? 'active' : '' ?>">
+                        <i class="bi bi-box-arrow-in-down"></i>
+                        <span class="nav-text">Penerimaan Barang</span>
+                    </a>
+                    <a href="<?= BASE_URL ?>/retur/index.php" class="sidebar-nav-link <?= $isRetur ? 'active' : '' ?>">
+                        <i class="bi bi-arrow-return-left"></i>
+                        <span class="nav-text">Retur Barang</span>
+                    </a>
+                    <a href="<?= BASE_URL ?>/kartu_stok/index.php" class="sidebar-nav-link <?= $isKartuStok ? 'active' : '' ?>">
+                        <i class="bi bi-journal-text"></i>
+                        <span class="nav-text">Buku Kartu Stok</span>
+                    </a>
+                <?php endif; ?>
+
+                <!-- 4. Administrasi (Khusus Admin) -->
                 <?php if ($userRole === 'admin'): ?>
                     <div class="sidebar-group-title">Administrasi Sistem</div>
                     <a href="<?= BASE_URL ?>/user/index.php" class="sidebar-nav-link <?= $isUser ? 'active' : '' ?>">

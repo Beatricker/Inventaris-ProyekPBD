@@ -19,12 +19,24 @@ $totalVendor = $pdo->query("SELECT COUNT(*) AS total FROM vendor")->fetch()->tot
 $totalUser   = $pdo->query("SELECT COUNT(*) AS total FROM user")->fetch()->total ?? 0;
 $totalRole   = $pdo->query("SELECT COUNT(*) AS total FROM role")->fetch()->total ?? 0;
 $totalMargin = $pdo->query("SELECT COUNT(*) AS total FROM margin_penjualan")->fetch()->total ?? 0;
+$totalKartuStok = $pdo->query("SELECT COUNT(*) AS total FROM kartu_stok")->fetch()->total ?? 0;
+$totalPenerimaan = $pdo->query("SELECT COUNT(*) AS total FROM penerimaan")->fetch()->total ?? 0;
+$totalRetur = $pdo->query("SELECT COUNT(*) AS total FROM retur")->fetch()->total ?? 0;
+$totalPengadaan = $pdo->query("SELECT COUNT(*) AS total FROM pengadaan")->fetch()->total ?? 0;
 
 // Ambil data terbaru melalui Database VIEW
 $recentBarang = $pdo->query("SELECT * FROM v_barang ORDER BY idbarang DESC LIMIT 6")->fetchAll();
 $recentUser   = $pdo->query("SELECT * FROM v_user ORDER BY iduser DESC LIMIT 5")->fetchAll();
 $recentMargin = $pdo->query("SELECT * FROM v_margin ORDER BY idmargin_penjualan DESC LIMIT 5")->fetchAll();
 $recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT 5")->fetchAll();
+$recentKartuStok = $pdo->query("
+    SELECT k.*, b.nama AS nama_barang, s.nama_satuan 
+    FROM kartu_stok k 
+    JOIN barang b ON k.idbarang = b.idbarang 
+    JOIN satuan s ON b.idsatuan = s.idsatuan 
+    ORDER BY k.idkartu_stok DESC 
+    LIMIT 5
+")->fetchAll();
 ?>
 
 <!-- 1. Page Header -->
@@ -48,14 +60,22 @@ $recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT
     </div>
 
     <div class="d-flex gap-2">
-        <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
+        <?php if ($userRole === 'admin'): ?>
+            <a href="<?= BASE_URL ?>/pengadaan/tambah.php" class="btn btn-outline-primary">
+                <i class="bi bi-cart-plus"></i> Buat Pengadaan
+            </a>
             <a href="<?= BASE_URL ?>/barang/tambah.php" class="btn btn-primary">
                 <i class="bi bi-plus-lg"></i> Tambah Barang
             </a>
-        <?php endif; ?>
-        <?php if ($userRole === 'admin'): ?>
             <a href="<?= BASE_URL ?>/user/tambah.php" class="btn btn-clear">
                 <i class="bi bi-person-plus"></i> Tambah User
+            </a>
+        <?php elseif ($userRole === 'gudang'): ?>
+            <a href="<?= BASE_URL ?>/penerimaan/tambah.php" class="btn btn-primary">
+                <i class="bi bi-box-arrow-in-down"></i> Tambah Stok (Penerimaan)
+            </a>
+            <a href="<?= BASE_URL ?>/retur/tambah.php" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-return-left"></i> Catat Retur
             </a>
         <?php endif; ?>
     </div>
@@ -98,20 +118,25 @@ $recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT
         </div>
     <?php elseif ($userRole === 'gudang'): ?>
         <div class="row g-0">
-            <div class="col-md-4 refract-strip__cell">
+            <div class="col-6 col-md-3 refract-strip__cell">
                 <div class="refract-strip__label">Koleksi Barang</div>
                 <div class="refract-strip__num tabular"><?= $totalBarang ?></div>
-                <a href="<?= BASE_URL ?>/barang/index.php" class="refract-strip__sub">Kelola Inventaris &rarr;</a>
+                <a href="<?= BASE_URL ?>/barang/index.php" class="refract-strip__sub">Katalog Fisik &rarr;</a>
             </div>
-            <div class="col-md-4 refract-strip__cell">
-                <div class="refract-strip__label">Satuan Tersedia</div>
-                <div class="refract-strip__num tabular"><?= $totalSatuan ?></div>
-                <a href="<?= BASE_URL ?>/satuan/index.php" class="refract-strip__sub">Kelola Satuan &rarr;</a>
+            <div class="col-6 col-md-3 refract-strip__cell">
+                <div class="refract-strip__label">Penerimaan Masuk</div>
+                <div class="refract-strip__num tabular"><?= $totalPenerimaan ?></div>
+                <a href="<?= BASE_URL ?>/penerimaan/index.php" class="refract-strip__sub">Buku Penerimaan &rarr;</a>
             </div>
-            <div class="col-md-4 refract-strip__cell">
-                <div class="refract-strip__label">Mitra Pemasok</div>
-                <div class="refract-strip__num tabular"><?= $totalVendor ?></div>
-                <a href="<?= BASE_URL ?>/vendor/index.php" class="refract-strip__sub">Kelola Vendor &rarr;</a>
+            <div class="col-6 col-md-3 refract-strip__cell">
+                <div class="refract-strip__label">Retur Vendor</div>
+                <div class="refract-strip__num tabular"><?= $totalRetur ?></div>
+                <a href="<?= BASE_URL ?>/retur/index.php" class="refract-strip__sub">Buku Retur &rarr;</a>
+            </div>
+            <div class="col-6 col-md-3 refract-strip__cell">
+                <div class="refract-strip__label">Buku Mutasi Stok</div>
+                <div class="refract-strip__num tabular"><?= $totalKartuStok ?></div>
+                <a href="<?= BASE_URL ?>/kartu_stok/index.php" class="refract-strip__sub">Buku Besar Stok &rarr;</a>
             </div>
         </div>
     <?php else: ?>
@@ -275,30 +300,49 @@ $recentVendor = $pdo->query("SELECT * FROM v_vendor ORDER BY idvendor DESC LIMIT
         </div>
     <?php elseif ($userRole === 'gudang'): ?>
         <div class="col-lg-4">
-            <!-- Panel Mitra Vendor untuk Gudang -->
+            <!-- Panel Mutasi Kartu Stok untuk Gudang -->
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-truck me-2" style="color: var(--color-accent);"></i>Mitra Vendor</span>
-                    <a href="<?= BASE_URL ?>/vendor/index.php" class="btn btn-clear btn-sm">Semua</a>
+                    <span class="fw-bold"><i class="bi bi-journal-text me-2" style="color: var(--color-accent);"></i>Mutasi Stok Terkini</span>
+                    <a href="<?= BASE_URL ?>/kartu_stok/index.php" class="btn btn-clear btn-sm">Semua</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th class="ps-4">Nama Vendor</th>
-                                    <th class="pe-4 text-end">Badan</th>
+                                    <th class="ps-4">Barang</th>
+                                    <th class="text-center">Jenis</th>
+                                    <th class="pe-4 text-end">Saldo</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($recentVendor as $v): ?>
+                                <?php if (empty($recentKartuStok)): ?>
                                     <tr>
-                                        <td class="ps-4 fw-semibold"><?= htmlspecialchars($v->nama_vendor) ?></td>
-                                        <td class="pe-4 text-end">
-                                            <span class="badge badge-refract-blue"><?= htmlspecialchars($v->badan_hukum) ?></span>
-                                        </td>
+                                        <td colspan="3" class="text-center py-4 text-muted">Belum ada mutasi stok.</td>
                                     </tr>
-                                <?php endforeach; ?>
+                                <?php else: ?>
+                                    <?php foreach ($recentKartuStok as $k): ?>
+                                        <tr>
+                                            <td class="ps-4">
+                                                <div class="fw-semibold text-dark" style="font-size: 0.88rem;"><?= htmlspecialchars($k->nama_barang) ?></div>
+                                                <small class="text-muted"><?= date('d/m H:i', strtotime($k->created_at)) ?></small>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($k->jenis_transaksi === 'M'): ?>
+                                                    <span class="badge badge-refract-green">+<?= $k->masuk ?></span>
+                                                <?php elseif ($k->jenis_transaksi === 'K'): ?>
+                                                    <span class="badge badge-refract-blue">-<?= $k->keluar ?></span>
+                                                <?php else: ?>
+                                                    <span class="badge badge-refract-red">-<?= $k->keluar ?> (R)</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="pe-4 text-end tabular fw-semibold" style="color: var(--color-accent);">
+                                                <?= number_format($k->stock, 0, ',', '.') ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>

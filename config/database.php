@@ -51,7 +51,7 @@ if (!defined('BASE_URL')) {
 // -----------------------------------------------------------------------------
 
 /**
- * Mengambil sisa stok barang terkini dari tabel kartu_stok via fn_get_sisa_stok()
+ * Mengambil sisa stok barang terkini dari tabel kartu_stok via 1-Function resmi: fn_get_sisa_stok()
  */
 function db_get_sisa_stok(PDO $pdo, int $idbarang): int {
     $stmt = $pdo->prepare("SELECT fn_get_sisa_stok(?) AS sisa");
@@ -60,99 +60,258 @@ function db_get_sisa_stok(PDO $pdo, int $idbarang): int {
 }
 
 /**
- * Menghitung harga jual barang sesuai margin aktif via fn_hitung_harga_jual()
+ * Menghitung harga jual barang sesuai margin aktif
  */
 function db_hitung_harga_jual(PDO $pdo, int $idbarang, ?int $idmargin = null): int {
-    $stmt = $pdo->prepare("SELECT fn_hitung_harga_jual(?, ?) AS harga_jual");
-    $stmt->execute([$idbarang, $idmargin]);
-    return (int) $stmt->fetchColumn();
+    $stmt = $pdo->prepare("SELECT harga FROM barang WHERE idbarang = ?");
+    $stmt->execute([$idbarang]);
+    $hargaDasar = (int) $stmt->fetchColumn();
+
+    $persen = 10.0;
+    if ($idmargin) {
+        $stmtM = $pdo->prepare("SELECT persen FROM margin_penjualan WHERE idmargin_penjualan = ?");
+        $stmtM->execute([$idmargin]);
+        $persen = (float) ($stmtM->fetchColumn() ?: 10.0);
+    } else {
+        $stmtM = $pdo->query("SELECT persen FROM margin_penjualan WHERE status = 1 LIMIT 1");
+        $persen = (float) ($stmtM->fetchColumn() ?: 10.0);
+    }
+    return (int) round($hargaDasar * (1 + $persen / 100));
 }
 
 /**
- * Menghitung nilai PPN dari subtotal via fn_hitung_ppn()
+ * Menghitung nilai PPN dari subtotal (11%)
  */
-function db_hitung_ppn(PDO $pdo, int $subtotal, float $persen = 11.0): int {
-    $stmt = $pdo->prepare("SELECT fn_hitung_ppn(?, ?) AS ppn");
-    $stmt->execute([$subtotal, $persen]);
-    return (int) $stmt->fetchColumn();
+function db_hitung_ppn(int $subtotal, float $persen = 11.0): int {
+    return (int) round($subtotal * ($persen / 100));
 }
 
 /**
- * Menghitung total nilai akhir transaksi via fn_hitung_total_transaksi()
+ * Menghitung total nilai akhir transaksi
  */
-function db_hitung_total_transaksi(PDO $pdo, int $subtotal, int $ppn): int {
-    $stmt = $pdo->prepare("SELECT fn_hitung_total_transaksi(?, ?) AS total");
-    $stmt->execute([$subtotal, $ppn]);
-    return (int) $stmt->fetchColumn();
+function db_hitung_total_transaksi(int $subtotal, int $ppn): int {
+    return $subtotal + $ppn;
 }
 
 // -----------------------------------------------------------------------------
-// Helper Pemanggil Stored Procedure MySQL dari Backend PHP
+// Helper Pemanggil Stored Procedure & Transaksi ACID
 // -----------------------------------------------------------------------------
 
 /**
- * Eksekusi transaksi kasir penjualan via sp_transaksi_penjualan (ACID)
- */
-function db_sp_transaksi_penjualan(PDO $pdo, int $iduser, ?int $idmargin, array $items): array {
-    $itemsJson = json_encode($items);
-    $pdo->query("SET @out_id = 0, @out_status = '', @out_msg = ''");
-    $stmt = $pdo->prepare("CALL sp_transaksi_penjualan(?, ?, ?, @out_id, @out_status, @out_msg)");
-    $stmt->execute([$iduser, $idmargin, $itemsJson]);
-    $stmt->closeCursor();
-
-    $res = $pdo->query("SELECT @out_id AS idpenjualan, @out_status AS status, @out_msg AS pesan")->fetch();
-    return [
-        'idpenjualan' => (int) $res->idpenjualan,
-        'status'      => $res->status,
-        'pesan'       => $res->pesan,
-    ];
-}
-
-/**
- * Eksekusi pencatatan pemesanan pengadaan barang ke vendor via sp_transaksi_pengadaan
- */
-function db_sp_transaksi_pengadaan(PDO $pdo, int $iduser, int $idvendor, array $items): array {
-    $itemsJson = json_encode($items);
-    $pdo->query("SET @out_id = 0, @out_status = '', @out_msg = ''");
-    $stmt = $pdo->prepare("CALL sp_transaksi_pengadaan(?, ?, ?, @out_id, @out_status, @out_msg)");
-    $stmt->execute([$iduser, $idvendor, $itemsJson]);
-    $stmt->closeCursor();
-
-    $res = $pdo->query("SELECT @out_id AS idpengadaan, @out_status AS status, @out_msg AS pesan")->fetch();
-    return [
-        'idpengadaan' => (int) $res->idpengadaan,
-        'status'      => $res->status,
-        'pesan'       => $res->pesan,
-    ];
-}
-
-/**
- * Eksekusi pencatatan penerimaan fisik barang via sp_transaksi_penerimaan
+ * Eksekusi pencatatan penerimaan fisik barang via Stored Procedure sp_transaksi_penerimaan (1-SP resmi).
+ * Setiap baris detail_penerimaan yang dimasukkan otomatis memicu Trigger trg_update_stok_penerimaan
+ * yang memanggil Function fn_get_sisa_stok untuk memperbarui saldo kartu_stok.
  */
 function db_sp_transaksi_penerimaan(PDO $pdo, int $idpengadaan, int $iduser, array $items): array {
-    $itemsJson = json_encode($items);
-    $pdo->query("SET @out_id = 0, @out_status = '', @out_msg = ''");
-    $stmt = $pdo->prepare("CALL sp_transaksi_penerimaan(?, ?, ?, @out_id, @out_status, @out_msg)");
-    $stmt->execute([$idpengadaan, $iduser, $itemsJson]);
-    $stmt->closeCursor();
+    if (empty($items)) {
+        return ['idpenerimaan' => 0, 'status' => 'INVALID', 'pesan' => 'Daftar rincian barang yang diterima tidak boleh kosong.'];
+    }
 
-    $res = $pdo->query("SELECT @out_id AS idpenerimaan, @out_status AS status, @out_msg AS pesan")->fetch();
-    return [
-        'idpenerimaan' => (int) $res->idpenerimaan,
-        'status'       => $res->status,
-        'pesan'        => $res->pesan,
-    ];
+    try {
+        $firstItem = $items[0];
+        $pdo->query("SET @out_id = 0");
+        $stmt = $pdo->prepare("CALL sp_transaksi_penerimaan(?, ?, ?, ?, ?, @out_id)");
+        $stmt->execute([
+            $idpengadaan,
+            $iduser,
+            $firstItem['idbarang'],
+            $firstItem['jumlah_terima'],
+            $firstItem['harga_satuan_terima'],
+        ]);
+        $stmt->closeCursor();
+
+        $idpenerimaan = (int) $pdo->query("SELECT @out_id")->fetchColumn();
+
+        if (count($items) > 1 && $idpenerimaan > 0) {
+            $stmtDetail = $pdo->prepare("
+                INSERT INTO detail_penerimaan (idpenerimaan, barang_idbarang, jumlah_terima, harga_satuan_terima, sub_total_terima)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            for ($i = 1; $i < count($items); $i++) {
+                $it = $items[$i];
+                $stmtDetail->execute([
+                    $idpenerimaan,
+                    $it['idbarang'],
+                    $it['jumlah_terima'],
+                    $it['harga_satuan_terima'],
+                    ($it['jumlah_terima'] * $it['harga_satuan_terima']),
+                ]);
+            }
+        }
+
+        return [
+            'idpenerimaan' => $idpenerimaan,
+            'status'       => 'SUCCESS',
+            'pesan'        => 'Penerimaan barang berhasil dicatat dan saldo stok bertambah otomatis.',
+        ];
+    } catch (Exception $e) {
+        return [
+            'idpenerimaan' => 0,
+            'status'       => 'ERROR',
+            'pesan'        => $e->getMessage(),
+        ];
+    }
 }
 
 /**
- * Ambil riwayat buku besar mutasi stok via sp_laporan_kartu_stok
+ * Eksekusi transaksi pemesanan pengadaan barang (PO)
  */
-function db_sp_laporan_kartu_stok(PDO $pdo, ?int $idbarang = null, ?string $tglMulai = null, ?string $tglSelesai = null): array {
-    $stmt = $pdo->prepare("CALL sp_laporan_kartu_stok(?, ?, ?)");
-    $stmt->execute([$idbarang, $tglMulai, $tglSelesai]);
-    $data = $stmt->fetchAll();
-    $stmt->closeCursor();
-    return $data;
+function db_sp_transaksi_pengadaan(PDO $pdo, int $iduser, int $idvendor, array $items): array {
+    if (empty($items)) {
+        return ['idpengadaan' => 0, 'status' => 'INVALID', 'pesan' => 'Daftar barang tidak boleh kosong.'];
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $subtotal += ((int)$it['jumlah'] * (int)$it['harga_satuan']);
+        }
+        $ppn = (int) round($subtotal * 0.11);
+        $total = $subtotal + $ppn;
+
+        $stmtPO = $pdo->prepare("
+            INSERT INTO pengadaan (timestamp, user_iduser, status, vendor_idvendor, subtotal_nilai, ppn, total_nilai)
+            VALUES (NOW(), ?, 'A', ?, ?, ?, ?)
+        ");
+        $stmtPO->execute([$iduser, $idvendor, $subtotal, $ppn, $total]);
+        $idpengadaan = (int) $pdo->lastInsertId();
+
+        $stmtDP = $pdo->prepare("
+            INSERT INTO detail_pengadaan (harga_satuan, jumlah, sub_total, idbarang, idpengadaan)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        foreach ($items as $it) {
+            $sub = (int)$it['jumlah'] * (int)$it['harga_satuan'];
+            $stmtDP->execute([(int)$it['harga_satuan'], (int)$it['jumlah'], $sub, (int)$it['idbarang'], $idpengadaan]);
+        }
+
+        $pdo->commit();
+        return [
+            'idpengadaan' => $idpengadaan,
+            'status'      => 'SUCCESS',
+            'pesan'       => 'Pemesanan pengadaan barang berhasil dicatat.',
+        ];
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return [
+            'idpengadaan' => 0,
+            'status'      => 'ERROR',
+            'pesan'       => $e->getMessage(),
+        ];
+    }
+}
+
+/**
+ * Eksekusi transaksi retur pengembalian barang cacat ke vendor
+ */
+function db_sp_transaksi_retur(PDO $pdo, int $idpenerimaan, int $iduser, array $items): array {
+    if (empty($items)) {
+        return ['idretur' => 0, 'status' => 'INVALID', 'pesan' => 'Daftar retur tidak boleh kosong.'];
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $stmtRetur = $pdo->prepare("
+            INSERT INTO retur (created_at, status, idpenerimaan, iduser)
+            VALUES (NOW(), 'A', ?, ?)
+        ");
+        $stmtRetur->execute([$idpenerimaan, $iduser]);
+        $idretur = (int) $pdo->lastInsertId();
+
+        $stmtDR = $pdo->prepare("
+            INSERT INTO detail_retur (jumlah, alasan, iddetail_penerimaan, idretur)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmtBarang = $pdo->prepare("SELECT barang_idbarang FROM detail_penerimaan WHERE iddetail_penerimaan = ? LIMIT 1");
+        $stmtKS = $pdo->prepare("
+            INSERT INTO kartu_stok (jenis_transaksi, masuk, keluar, stock, created_at, idtransaksi, idbarang)
+            VALUES ('R', 0, ?, ?, NOW(), ?, ?)
+        ");
+
+        foreach ($items as $it) {
+            $stmtDR->execute([(int)$it['jumlah'], $it['alasan'], (int)$it['iddetail_penerimaan'], $idretur]);
+
+            $stmtBarang->execute([(int)$it['iddetail_penerimaan']]);
+            $idbarang = (int) $stmtBarang->fetchColumn();
+
+            $stokLama = db_get_sisa_stok($pdo, $idbarang);
+            $stokBaru = $stokLama - (int)$it['jumlah'];
+            $stmtKS->execute([(int)$it['jumlah'], $stokBaru, $idretur, $idbarang]);
+        }
+
+        $pdo->commit();
+        return [
+            'idretur' => $idretur,
+            'status'  => 'SUCCESS',
+            'pesan'   => 'Retur barang berhasil dicatat.',
+        ];
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return [
+            'idretur' => 0,
+            'status'  => 'ERROR',
+            'pesan'   => $e->getMessage(),
+        ];
+    }
+}
+
+/**
+ * Eksekusi transaksi kasir penjualan
+ */
+function db_sp_transaksi_penjualan(PDO $pdo, int $iduser, ?int $idmargin, array $items): array {
+    if (empty($items)) {
+        return ['idpenjualan' => 0, 'status' => 'INVALID', 'pesan' => 'Keranjang belanja tidak boleh kosong.'];
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $subtotal += ((int)$it['jumlah'] * (int)$it['harga_satuan']);
+        }
+        $ppn = (int) round($subtotal * 0.11);
+        $total = $subtotal + $ppn;
+
+        $stmtPJ = $pdo->prepare("
+            INSERT INTO penjualan (created_at, subtotal_nilai, ppn, total_nilai, iduser, idmargin_penjualan)
+            VALUES (NOW(), ?, ?, ?, ?, ?)
+        ");
+        $stmtPJ->execute([$subtotal, $ppn, $total, $iduser, $idmargin]);
+        $idpenjualan = (int) $pdo->lastInsertId();
+
+        $stmtDP = $pdo->prepare("
+            INSERT INTO detail_penjualan (penjualan_idpenjualan, idbarang, jumlah, harga_satuan, subtotal)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmtKS = $pdo->prepare("
+            INSERT INTO kartu_stok (jenis_transaksi, masuk, keluar, stock, created_at, idtransaksi, idbarang)
+            VALUES ('K', 0, ?, ?, NOW(), ?, ?)
+        ");
+
+        foreach ($items as $it) {
+            $sub = (int)$it['jumlah'] * (int)$it['harga_satuan'];
+            $stmtDP->execute([$idpenjualan, (int)$it['idbarang'], (int)$it['jumlah'], (int)$it['harga_satuan'], $sub]);
+
+            $stokLama = db_get_sisa_stok($pdo, (int)$it['idbarang']);
+            $stokBaru = $stokLama - (int)$it['jumlah'];
+            $stmtKS->execute([(int)$it['jumlah'], $stokBaru, $idpenjualan, (int)$it['idbarang']]);
+        }
+
+        $pdo->commit();
+        return [
+            'idpenjualan' => $idpenjualan,
+            'status'      => 'SUCCESS',
+            'pesan'       => 'Penjualan berhasil dicatat.',
+        ];
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        return [
+            'idpenjualan' => 0,
+            'status'      => 'ERROR',
+            'pesan'       => $e->getMessage(),
+        ];
+    }
 }
 
 

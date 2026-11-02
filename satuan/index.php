@@ -8,7 +8,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/auth.php';
-check_role(['Admin', 'Gudang']);
+check_role(['Admin']);
 
 $page_title = 'Data Satuan';
 require_once __DIR__ . '/../includes/header.php';

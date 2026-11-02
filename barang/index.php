@@ -14,7 +14,7 @@ $page_title = 'Data Barang';
 require_once __DIR__ . '/../includes/header.php';
 
 $userRole = strtolower(trim(auth_role()));
-$canManage = in_array($userRole, ['admin', 'gudang']);
+$canManage = ($userRole === 'admin');
 
 // Ambil data barang dari database VIEW v_barang
 $stmt = $pdo->query("SELECT * FROM v_barang ORDER BY idbarang ASC");
@@ -28,11 +28,23 @@ $barangList = $stmt->fetchAll();
     </div>
     <div>
         <?php if ($canManage): ?>
-            <a href="<?= BASE_URL ?>/barang/tambah.php" class="btn btn-primary">
-                <i class="bi bi-plus-lg"></i> Tambah Barang Baru
-            </a>
+            <div class="d-flex gap-2">
+                <a href="<?= BASE_URL ?>/penerimaan/tambah.php" class="btn btn-outline-primary">
+                    <i class="bi bi-box-arrow-in-down"></i> Tambah Stok (Penerimaan)
+                </a>
+                <a href="<?= BASE_URL ?>/barang/tambah.php" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Tambah Barang Baru
+                </a>
+            </div>
+        <?php elseif ($userRole === 'gudang'): ?>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge badge-refract-yellow py-2 px-3"><i class="bi bi-eye me-1"></i>Hanya Lihat</span>
+                <a href="<?= BASE_URL ?>/penerimaan/tambah.php" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-down"></i> Tambah Stok (Penerimaan)
+                </a>
+            </div>
         <?php else: ?>
-            <span class="badge badge-refract-blue py-2 px-3">Mode Katalog Kasir</span>
+            <span class="badge badge-refract-blue py-2 px-3"><i class="bi bi-cart me-1"></i>Mode Katalog Kasir</span>
         <?php endif; ?>
     </div>
 </div>

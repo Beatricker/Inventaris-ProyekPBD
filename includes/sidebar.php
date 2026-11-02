@@ -31,9 +31,9 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
 
-        <!-- Menu Logistik & Barang: Gudang & Admin -->
-        <?php if (in_array($userRole, ['admin', 'gudang'])): ?>
-            <div class="nav-header">Logistik & Barang</div>
+        <!-- Menu Logistik & Barang -->
+        <?php if ($userRole === 'admin'): ?>
+            <div class="nav-header">Master Data</div>
             <a class="nav-link <?= $isSatuan ? 'active' : '' ?>" href="<?= BASE_URL ?>/satuan/index.php">
                 <i class="bi bi-rulers"></i> Satuan
             </a>
@@ -42,6 +42,14 @@ $isMargin    = (strpos($currentScript, '/margin/') !== false);
             </a>
             <a class="nav-link <?= $isVendor ? 'active' : '' ?>" href="<?= BASE_URL ?>/vendor/index.php">
                 <i class="bi bi-truck"></i> Vendor
+            </a>
+            <a class="nav-link <?= $isPengadaan ? 'active' : '' ?>" href="<?= BASE_URL ?>/pengadaan/index.php">
+                <i class="bi bi-cart-plus"></i> Pengadaan Barang
+            </a>
+        <?php elseif ($userRole === 'gudang'): ?>
+            <div class="nav-header">Logistik &amp; Gudang</div>
+            <a class="nav-link <?= $isBarang ? 'active' : '' ?>" href="<?= BASE_URL ?>/barang/index.php">
+                <i class="bi bi-box-seam"></i> Data Barang (Lihat)
             </a>
         <?php elseif ($userRole === 'kasir'): ?>
             <!-- Kasir hanya diizinkan melihat katalog barang -->
